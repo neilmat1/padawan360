@@ -201,7 +201,8 @@ void setup() {
   pinMode(EXTINGUISHERPIN, OUTPUT);
   digitalWrite(EXTINGUISHERPIN, HIGH);
 
-  mp3Trigger.setup();
+  //Put the mp3 trigger on Serial 3 so we can still use the serial monitor without interference
+  mp3Trigger.setup(&Serial3);
   mp3Trigger.setVolume(vol);
 
   if(isLeftStickDrive) {
