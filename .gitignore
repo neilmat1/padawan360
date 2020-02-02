@@ -1,2 +1,8 @@
 /.vs
 /.vs/*
+**/__vm
+**/Debug
+**/Release
+**/__vm/*
+**/Debug/*
+**/Release/*
