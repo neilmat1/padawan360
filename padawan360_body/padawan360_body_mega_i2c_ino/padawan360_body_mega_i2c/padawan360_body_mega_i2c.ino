@@ -112,6 +112,8 @@ int turnDirection = 20;
 #include <MP3Trigger.h>
 #include <Wire.h>
 #include <XBOXRECV.h>
+#include <R2Servo.h>
+#include <Adafruit_PWMServoDriver.h>
 
 
 /////////////////////////////////////////////////////////////////
@@ -168,6 +170,9 @@ boolean isHPOn = false;
 MP3Trigger mp3Trigger;
 USB Usb;
 XBOXRECV Xbox(&Usb);
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+R2Servo servo1 = R2Servo();
+R2Servo servo2 = R2Servo();
 
 void setup() {
   Serial1.begin(SABERTOOTHBAUDRATE);
@@ -231,7 +236,14 @@ void setup() {
     //Serial.print(F("\r\nOSC did not start"));
     while (1); //halt
   }
-  //Serial.print(F("\r\nXbox Wireless Receiver Library Started"));
+  pwm.begin();
+  pwm.setOscillatorFrequency(27000000);  // The int.osc. is closer to 27MHz  
+  pwm.setPWMFreq(50);
+  servo1.setup(0, &pwm);
+  servo2.setup(1, &pwm);
+
+  Serial.begin(38400);
+  Serial.println("Padawan 360 Initialized");
 }
 
 
@@ -253,11 +265,13 @@ void loop() {
     firstLoadOnConnect = true;
     mp3Trigger.play(21);
     Xbox.setLedMode(ROTATING, 0);
+    Serial.println("Initial Connection Complete");
   }
   
   if (Xbox.getButtonClick(XBOX, 0)) {
     if(Xbox.getButtonPress(L1, 0) && Xbox.getButtonPress(R1, 0)){ 
       Xbox.disconnect(0);
+      Serial.println("Controller disconnected");
     }
   }
 
@@ -267,6 +281,7 @@ void loop() {
       isDriveEnabled = false;
       Xbox.setLedMode(ROTATING, 0);
       mp3Trigger.play(53);
+      Serial.println("Drive disabled");
     } else {
       isDriveEnabled = true;
       mp3Trigger.play(52);
@@ -278,6 +293,7 @@ void loop() {
       } else {
         Xbox.setLedOn(LED3, 0);
       }
+      Serial.println("Drive enabled");
     }
   }
 
@@ -287,9 +303,11 @@ void loop() {
       isInAutomationMode = false;
       automateAction = 0;
       mp3Trigger.play(53);
+      Serial.println("Automation enabled");
     } else {
       isInAutomationMode = true;
       mp3Trigger.play(52);
+      Serial.println("Automation disabled");
     }
   }
 
@@ -385,7 +403,7 @@ void loop() {
   // Y Button and Y combo buttons
   if (Xbox.getButtonClick(Y, 0)) {
     if (Xbox.getButtonPress(L1, 0)) {
-      mp3Trigger.play(8);
+        servo1.open();
       //logic lights, random
       triggerI2C(10, 0);
     } else if (Xbox.getButtonPress(L2, 0)) {
@@ -393,11 +411,11 @@ void loop() {
       //logic lights, random
       triggerI2C(10, 0);
     } else if (Xbox.getButtonPress(R1, 0)) {
-      mp3Trigger.play(9);
+        servo1.close();
       //logic lights, random
       triggerI2C(10, 0);
     } else {
-      mp3Trigger.play(random(13, 17));
+        servo1.toggle();
       //logic lights, random
       triggerI2C(10, 0);
     }
@@ -406,7 +424,7 @@ void loop() {
   // A Button and A combo Buttons
   if (Xbox.getButtonClick(A, 0)) {
     if (Xbox.getButtonPress(L1, 0)) {
-      mp3Trigger.play(6);
+        servo2.open();
       //logic lights
       triggerI2C(10, 6);
       // HPEvent 11 - SystemFailure - I2C
@@ -422,11 +440,11 @@ void loop() {
       triggerI2C(26, 3);
       triggerI2C(27, 3);
     } else if (Xbox.getButtonPress(R1, 0)) {
-      mp3Trigger.play(11);
+        servo2.close();
       //logic lights, alarm2Display
       triggerI2C(10, 11);
     } else {
-      mp3Trigger.play(random(17, 25));
+        servo2.toggle();
       //logic lights, random
       triggerI2C(10, 0);
     }
@@ -504,6 +522,7 @@ void loop() {
   // Press Right Analog Stick (R3) for right stick drive mode
   // Set LEDs for speed - 1 LED, Low. 2 LED - Med. 3 LED High
   if (Xbox.getButtonClick(speedSelectButton, 0) && isDriveEnabled) {
+      Serial.println("Changing Drive Speed");
     //if in lowest speed
     if (drivespeed == DRIVESPEED1) {
       //change to medium speed and play sound 3-tone
@@ -511,12 +530,14 @@ void loop() {
       Xbox.setLedOn(LED2, 0);
       mp3Trigger.play(53);
       triggerI2C(10, 22);
+      Serial.println("Drive Speed changed to medium");
     } else if (drivespeed == DRIVESPEED2 && (DRIVESPEED3 != 0)) {
       //change to high speed and play sound scream
       drivespeed = DRIVESPEED3;
       Xbox.setLedOn(LED3, 0);
       mp3Trigger.play(1);
       triggerI2C(10, 23);
+      Serial.println("Drive Speed changed to high");
     } else {
       //we must be in high speed
       //change to low speed and play sound 2-tone
@@ -524,6 +545,7 @@ void loop() {
       Xbox.setLedOn(LED1, 0);
       mp3Trigger.play(52);
       triggerI2C(10, 21);
+      Serial.println("Drive Speed changed to low");
     }
   }
 
@@ -576,6 +598,10 @@ void loop() {
   }
 
   Syren10.motor(1, domeThrottle);
+
+  //Do the updates
+  servo1.update();
+  servo2.update();
 } // END loop()
 
 void triggerI2C(byte deviceID, byte eventID) {
